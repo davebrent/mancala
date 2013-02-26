@@ -4,6 +4,17 @@ module.exports = function(grunt) {
     lint: {
       files: ['src/*.js']
     },
+    jshint: {
+      options: {
+        "browser": true,
+        "jquery": true,
+        "strict": true,
+        "maxparams": 5,
+        "maxdepth": 5,
+        "maxlen": 120,
+        "laxcomma": true
+      }
+    },
     concat: {
       dist: {
         src: [

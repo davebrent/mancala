@@ -4,9 +4,7 @@
 
   var root = this;
 
-  function start() {
-    console.log("start app");
-  }
+  function start() {}
 
   root.game = start;
 
