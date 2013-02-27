@@ -44,6 +44,24 @@ $(function () {
   });
 
 
+  test("Rules:capture", function () {
+    var Player = mancala.Player
+      , Turn = mancala.Turn
+      , capture = mancala.rules.capture
+      , players = [new Player(), new Player()]
+      , start = new Turn(1, 3)
+      , end = new Turn(1, 4);
+
+    players[1].cups = [4, 4, 4, 0, 1, 4];
+    ok(capture(start, end, players) === true, "captured opponents seeds");
+
+    players[1].cups = [4, 4, 4, 0, 2, 4];
+    ok(capture(start, end, players) === false, "did not capture seeds");
+
+    ok(capture(new Turn(1, 3), new Turn(0, 1), players) === false, "did not capture seeds");
+  });
+
+
   test("Mancala interface", function () {
     var m = new mancala.Mancala({
       "capture": function () { ok(1 === 1, "mixing in custom events on init"); }

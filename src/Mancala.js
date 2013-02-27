@@ -2,8 +2,7 @@
 
   "use strict";
 
-  var root = this
-    , rules = {};
+  var root = this, rules = {};
 
 
   rules.capture = function (started, ended, players) {
@@ -16,7 +15,7 @@
     opposing  = players[(started.player + 1) % players.length].cups[ended.cup];
     endplayer = players[ended.player].cups[ended.cup];
 
-    if (opposing === 1 && endplayer > 0) {
+    if (opposing > 0 && endplayer === 1) {
       return true;
     }
 
