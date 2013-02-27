@@ -7,15 +7,41 @@
 
 
   rules.capture = function (started, ended, players) {
+    var opposing, endplayer;
 
+    if (started.player !== ended.player) {
+      return false;
+    }
+
+    opposing  = players[(started.player + 1) % players.length].cups[ended.cup];
+    endplayer = players[ended.player].cups[ended.cup];
+
+    if (opposing === 1 && endplayer > 0) {
+      return true;
+    }
+
+    return false;
   };
 
   rules.extra = function (started, ended) {
+    if (started.player !== ended.player) {
+      return false;
+    }
 
+    if ((started.player === 0 && ended.cup < 0) ||
+        (ended.player === 1 && ended.cup === 6)) {
+      return true;
+    }
+
+    return false;
   };
 
   rules.end = function (started, ended, players) {
-
+    return players.map(function (player) {
+      return player.finished();
+    }).reduce(function (memo, state) {
+      return (!memo && state) ? state : memo;
+    });
   };
 
 
@@ -47,8 +73,8 @@
 
 
   function Mancala(options) {
-    options = (options) ? options : {};
     var context = this;
+    options = (options) ? options : {};
     [ "start",
       "finish",
       "capture",
