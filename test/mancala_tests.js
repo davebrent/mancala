@@ -13,10 +13,70 @@ $(function () {
   });
 
 
+  asyncTest("Computer function", 4, function () {
+    var gate = 0;
+    function check() {
+      gate += 1;
+      if (gate === 4) { start(); }
+    }
+
+    mancala.computer(function (index) {
+      ok(index === 3, "test randomly chose the only sane option");
+      check();
+    }, {
+      cups: [0,0,0,5,0,0]
+    });
+
+    mancala.computer(function (index) {
+      ok(index === 3 || index === 1, "test picking one of two options");
+      check();
+    }, {
+      cups: [0,1,0,5,0,0]
+    });
+
+    mancala.computer(function (index) {
+      ok(index === 5, "test randomly chose the only sane option at the end of the array");
+      check();
+    }, {
+      cups: [0,0,0,0,0,1]
+    });
+
+    mancala.computer(function (index) {
+      ok(index === 0, "test randomly chose the only sane option at the start of the array");
+      check();
+    }, {
+      cups: [1,0,0,0,0,0]
+    });
+  });
+
+
   test("Board movements", function () {
-    var board = new mancala.Board();
+    var board = new mancala.Board(function () {}, function () {}, {
+      onstart: function () {}
+    });
 
     ok(board.players.length === 2, "player array inits correctly");
+  });
+
+
+  asyncTest("Recursive sowing of seeds", 4, function () {
+    var check, one, two, game;
+
+    check = 0;
+    one = function (next) { next(2); };
+    two = function () {};
+
+    game = new mancala.Mancala(one, two, {
+      move: function (turn) {
+        check += 1;
+        ok(turn.seeds === (4 - check), "seed count is decremented");
+        if (check === 4) {
+          start();
+        }
+      }
+    });
+
+    game.start();
   });
 
 
@@ -62,18 +122,17 @@ $(function () {
   });
 
 
-  test("Mancala interface", function () {
-    var m = new mancala.Mancala({
-      "capture": function () { ok(1 === 1, "mixing in custom events on init"); }
+  asyncTest("Mancala interface", 1, function () {
+    var m = new mancala.Mancala(function () {}, function () {}, {
+      "start": function () {
+        ok(1 === 1, "start event called on init");
+      }
     });
 
-    m.oncapture();
-    ok(typeof m.onfinish() === "undefined", "undefined event defaults to empty function");
-
-    m.onstart = function () { ok(1 === 1, "start event firing on start"); };
-    m.start();
-    m.onstart = function () { ok(1 === 1, "start event firing on restart"); };
-    m.restart();
+    setTimeout(function () {
+      m.restart();
+      start();
+    }, 30);
   });
 
 
