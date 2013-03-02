@@ -43,6 +43,20 @@
     return false;
   };
 
+  rules.pit = function (turn) {
+    if (turn.cup < 0 || turn.cup === 6) {
+      return true;
+    }
+    return false;
+  };
+
+  rules.score = function (started, ended) {
+    if (started.player === ended.player) {
+      return true;
+    }
+    return false;
+  };
+
   rules.end = function (started, ended, players) {
     return players.map(function (player) {
       return player.finished();
@@ -62,11 +76,11 @@
   }
 
   Turn.prototype.clone = function () {
-    return new Turn(this.player, this.cup);
+    return new Turn(this.player, this.cup, this.seeds);
   };
 
   Turn.prototype.next = function () {
-    return new Turn((this.player + 1) % 2, null);
+    return new Turn((this.player + 1) % 2, this.cup, this.seeds);
   };
 
   // Players are instantiated with a callback function which is used by the board
@@ -120,10 +134,6 @@
     }, this.players);
   };
 
-  Board.prototype._get_seeds = function (turn) {
-    return this.players[turn.player].cups[turn.cup];
-  };
-
   Board.prototype.move = function (startturn) {
     var context = this, timeout, endturn;
 
@@ -134,9 +144,9 @@
     function tick(recursive, timeout) {
       if (endturn.seeds === 0) {
         clearTimeout(timeout);
+        context._close.call(context, endturn, startturn);
       } else {
-        endturn.seeds -= 1;
-        context.options.onmove(endturn, context.players);
+        endturn = context._tick.call(context, endturn, startturn);
         clearTimeout(timeout);
         recursive();
       }
@@ -149,6 +159,44 @@
     }());
 
     return this;
+  };
+
+  Board.prototype._get_seeds = function (turn) {
+    return this.players[turn.player].cups[turn.cup];
+  };
+
+  Board.prototype._tick = function (endturn, startturn) {
+    endturn.seeds -= 1;
+
+    if (rules.pit(endturn)) {
+      if (startturn.player === endturn.player) {
+        this.players[endturn.player].pit += 1;
+        this.options.onpit(endturn.clone(), this.players);
+      }
+
+      endturn = endturn.next();
+    } else {
+      this.players[endturn.player].cups[endturn.cup] += 1;
+      this.options.onmove(endturn.clone(), this.players);
+    }
+
+    return endturn;
+  };
+
+  Board.prototype._close = function () {
+    if (rules.extra(startturn, endturn, this.players)) {
+
+    } else if (rules.capture(startturn, endturn, this.players)) {
+
+    }
+
+    if (rules.end(this.players)) {
+      this.options.onfinish(this.players);
+    } else {
+      startturn = startturn.next();
+      this.options.onturn(startturn);
+      this.next(startturn);
+    }
   };
 
   // Acts as a public interface to the script, handles default options/events.
