@@ -1,0 +1,83 @@
+body {
+  color: #222;
+  font-size: 18px;
+}
+
+.clearfix:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+h1 {
+  font-size: 36px;
+  border-bottom: 5px solid #222;
+  -webkit-margin-before: 0;
+  -webkit-margin-after: 0;
+  padding: 0 0 15px 0;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.window {
+  width: 585px;
+  padding: 40px 0;
+  margin: 0 auto;
+}
+
+.board {
+  margin-left: 15px;
+  width: 450px;
+  float: left;
+}
+
+.messages {
+  border-top: 5px solid #222;
+  display: block;
+  clear: both;
+  margin-top: 20px;
+  text-align: center;
+  padding-top: 15px;
+}
+
+.cup, .pit {
+  text-align: center;
+  font-weight: bold;
+  float: left;
+  width: 50px;
+}
+
+.cup {
+  line-height: 50px;
+  height: 50px;
+  margin: 0 15px 15px 0;
+
+  border: 5px solid #222;
+  -webkit-border-radius: 30px;
+     -moz-border-radius: 30px;
+      -ms-border-radius: 30px;
+       -o-border-radius: 30px;
+          border-radius: 30px;
+}
+
+.pit {
+  line-height: 125px;
+  height: 125px;
+
+  border: 5px solid #222;
+  -webkit-border-radius: 30px;
+     -moz-border-radius: 30px;
+      -ms-border-radius: 30px;
+       -o-border-radius: 30px;
+          border-radius: 30px;
+}
+
+.player-2 .cup {
+  margin-bottom: 0;
+}
+
+.player-2 .cup:hover {
+  color: #0e94ec;
+  border-color: #0e94ec;
+  cursor: pointer;
+}

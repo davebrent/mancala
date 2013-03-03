@@ -6,13 +6,38 @@
     <meta name="description" content="Mancala">
     <meta name="author" content="@dave_brent">
     <link rel="stylesheet" type="text/css" href="lib/normalize.min.css">
-    <link rel="stylesheet" type="text/css" href="css/mancala.css" media="screen, projection" />
+    <link rel="stylesheet" type="text/css" href="css/mancala.css" media="screen" />
     <script type="text/javascript" src="lib/es5-shim.min.js"></script>
     <script type="text/javascript" src="lib/jquery-1.9.1.min.js"></script>
   </head>
   <body>
-    <div id='wrapper'>
-      <div id="application"></div>
+    <div class='window'>
+      <h1>mancala</h1>
+      <div class="clearfix">
+        <div class='player-1 pit'>0</div>
+        <div class="board">
+          <div class="player-1 cups clearfix">
+            <div data-cup="0" class='cup'>4</div>
+            <div data-cup="1" class='cup'>4</div>
+            <div data-cup="2" class='cup'>4</div>
+            <div data-cup="3" class='cup'>4</div>
+            <div data-cup="4" class='cup'>4</div>
+            <div data-cup="5" class='cup'>4</div>
+          </div>
+          <div class="player-2 cups clearfix">
+            <div data-cup="0" class='cup'>4</div>
+            <div data-cup="1" class='cup'>4</div>
+            <div data-cup="2" class='cup'>4</div>
+            <div data-cup="3" class='cup'>4</div>
+            <div data-cup="4" class='cup'>4</div>
+            <div data-cup="5" class='cup'>4</div>
+          </div>
+        </div>
+        <div class='player-2 pit'>0</div>
+      </div>
+      <div class="messages">
+        Player 1 got an extra go!
+      </div>
     </div>
     <script src="dist/mancala.js"></script>
     <script type="text/javascript">
