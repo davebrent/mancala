@@ -29,17 +29,31 @@
   rules.extra = function (started, ended) {
     var a, b;
 
-    if (started.player !== ended.player) {
+    if (started.player === ended.player) {
       return false;
     }
 
-    a = (started.player === 0 && ended.cup < 0);
-    b = (ended.player === 1 && ended.cup === 6);
+    a = (ended.player === 1 && ended.cup < 0);
+    b = (ended.player === 0 && ended.cup === 6);
 
     if (a || b) {
       return true;
     }
 
+    return false;
+  };
+
+  rules.pit = function (turn) {
+    if (turn.cup < 0 || turn.cup === 6) {
+      return true;
+    }
+    return false;
+  };
+
+  rules.score = function (started, ended) {
+    if (started.player === ended.player) {
+      return true;
+    }
     return false;
   };
 
@@ -62,11 +76,11 @@
   }
 
   Turn.prototype.clone = function () {
-    return new Turn(this.player, this.cup);
+    return new Turn(this.player, this.cup, this.seeds);
   };
 
   Turn.prototype.next = function () {
-    return new Turn((this.player + 1) % 2, null);
+    return new Turn((this.player + 1) % 2, this.cup, this.seeds);
   };
 
   // Players are instantiated with a callback function which is used by the board
@@ -94,7 +108,7 @@
 
     setTimeout(function () {
       move(cups[Math.floor(Math.random() * cups.length)] - 1);
-    }, 500);
+    }, 1000);
   }
 
   // The board is the crux of the game and handles sowing seeds around the board,
@@ -113,15 +127,19 @@
   };
 
   Board.prototype.next = function (turn) {
-    var context = this;
-    this.players[turn.player].move(function (cup_index) {
-      turn.cup = cup_index;
-      context.move(turn);
-    }, this.players);
-  };
+    var context = this, player;
 
-  Board.prototype._get_seeds = function (turn) {
-    return this.players[turn.player].cups[turn.cup];
+    function startmove(cup_index) {
+      turn.cup = cup_index;
+      turn.seeds = context._get_seeds(turn);
+      context.players[turn.player].cups[turn.cup] = 0;
+      context.options.onpicked(turn, context.players);
+      context.move(turn);
+    }
+
+    player = this.players[turn.player];
+    player.move(startmove, player);
+    return this;
   };
 
   Board.prototype.move = function (startturn) {
@@ -129,14 +147,12 @@
 
     endturn = startturn.clone();
 
-    endturn.seeds = this._get_seeds(endturn);
-
     function tick(recursive, timeout) {
       if (endturn.seeds === 0) {
         clearTimeout(timeout);
+        context._close.call(context, endturn, startturn);
       } else {
-        endturn.seeds -= 1;
-        context.options.onmove(endturn, context.players);
+        endturn = context._tick.call(context, endturn, startturn);
         clearTimeout(timeout);
         recursive();
       }
@@ -151,6 +167,76 @@
     return this;
   };
 
+  Board.prototype._tick = function (endturn, startturn) {
+    endturn.cup += (endturn.player * 2) - 1;
+
+    if (rules.pit(endturn)) {
+      if (startturn.player === endturn.player) {
+        this.players[endturn.player].pit += 1;
+        this.options.onpit(endturn.clone(), this.players);
+      }
+
+      endturn = endturn.next();
+    } else {
+      this.players[endturn.player].cups[endturn.cup] += 1;
+      this.options.onmove(endturn, this.players);
+    }
+
+    endturn.seeds -= 1;
+    return endturn;
+  };
+
+  Board.prototype._get_seeds = function (turn) {
+    return this.players[turn.player].cups[turn.cup];
+  };
+
+  Board.prototype._get_winner = function () {
+    var scores = this.players.map(function (player) {
+      return player.pit;
+    });
+
+    if (scores[0] === scores[1]) {
+      return 2;
+    }
+
+    return scores.indexOf(Math.max.apply(null, scores));
+  };
+
+  Board.prototype._make_capture = function (endturn, startturn) {
+    var idx = endturn.cup
+      , opp = this.players[(startturn.player + 1) % 2]
+      , cur = this.players[startturn.player]
+      , seeds = opp.cups[idx];
+
+    cur.pit += (seeds + 1);
+
+    opp.cups[idx] = 0;
+    cur.cups[idx] = 0;
+
+    return this.players;
+  };
+
+  Board.prototype._close = function (endturn, startturn) {
+    if (rules.capture(startturn, endturn, this.players)) {
+      this._make_capture(endturn, startturn);
+      this.options.oncapture(endturn, this.players);
+    }
+
+    if (rules.end(startturn, endturn, this.players)) {
+      this.options.onfinish(this._get_winner(), this.players);
+    } else {
+
+      if (rules.extra(startturn, endturn)) {
+        this.options.onextra(startturn);
+      } else {
+        startturn = startturn.next();
+        this.options.onturn(startturn);
+      }
+
+      this.next(startturn);
+    }
+  };
+
   // Acts as a public interface to the script, handles default options/events.
 
   function Mancala(player1, player2, options) {
@@ -163,7 +249,8 @@
       "extra",
       "picked",
       "pit",
-      "move"
+      "move",
+      "turn"
     ];
 
     events.forEach(function (event) {
@@ -193,9 +280,91 @@
 
   "use strict";
 
-  var root = this;
+  var root = this
+    , options
+    , player
+    , toggle_sow_class
+    , toggle_score_class;
 
-  function start() {}
+  toggle_sow_class = add_remove("active", 200);
+  toggle_score_class = add_remove("score", 200);
+
+  function add_remove(klass, speed) {
+    return function ($el) {
+      $el.addClass(klass);
+      setTimeout(function () {
+        $el.removeClass(klass);
+      }, speed);
+    };
+  }
+
+  player = function (next) {
+    var board = $('.player-2');
+    board.on('click', '.cup', function (event) {
+      var cup = $(this).data('cup');
+      event.preventDefault();
+      board.off('click');
+      next(cup);
+    });
+  };
+
+  function update_cup(turn, players) {
+    var sel = '.player-' + (turn.player + 1)
+      , cup = '[data-cup="' + turn.cup + '"]'
+      , ele = $(sel + ' ' + cup);
+
+    ele.html(players[turn.player].cups[turn.cup]);
+    toggle_sow_class(ele);
+  }
+
+  function update_opp(turn, players) {
+    var plr = ((turn.player + 1) % 2)
+      , sel = '.player-' + (plr + 1)
+      , cup = '[data-cup="' + turn.cup + '"]'
+      , ele = $(sel + ' ' + cup);
+
+    ele.html(players[plr].cups[turn.cup]);
+    toggle_sow_class(ele);
+  }
+
+  function update_pit(turn, players) {
+    var ele = $('.player-' + (turn.player + 1) + '.pit');
+    ele.html(players[turn.player].pit);
+    toggle_score_class(ele);
+  }
+
+  function update_msg(msg) {
+    $('.messages').html(msg);
+  }
+
+  options = {
+    speed: 200,
+    picked: update_cup,
+    move: update_cup,
+    pit: update_pit,
+    start: function (players) {
+
+    },
+    finish: function (winner) {
+
+    },
+    capture: function (turn, players) {
+      update_cup(turn, players);
+      update_opp(turn, players);
+      update_pit(turn, players);
+    },
+    extra: function (turn) {
+      update_msg("player " + turn.player + " gets an extra go");
+    },
+    turn: function (turn) {
+      update_msg("player " + turn.player + "'s' turn");
+    }
+  };
+
+  function start() {
+    var game = new mancala.Mancala(mancala.computer, player, options);
+    game.start();
+  }
 
   root.game = start;
 

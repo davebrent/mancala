@@ -29,12 +29,12 @@
   rules.extra = function (started, ended) {
     var a, b;
 
-    if (started.player !== ended.player) {
+    if (started.player === ended.player) {
       return false;
     }
 
-    a = (started.player === 0 && ended.cup < 0);
-    b = (ended.player === 1 && ended.cup === 6);
+    a = (ended.player === 1 && ended.cup < 0);
+    b = (ended.player === 0 && ended.cup === 6);
 
     if (a || b) {
       return true;
@@ -108,7 +108,7 @@
 
     setTimeout(function () {
       move(cups[Math.floor(Math.random() * cups.length)] - 1);
-    }, 500);
+    }, 1000);
   }
 
   // The board is the crux of the game and handles sowing seeds around the board,
@@ -127,19 +127,25 @@
   };
 
   Board.prototype.next = function (turn) {
-    var context = this;
-    this.players[turn.player].move(function (cup_index) {
+    var context = this, player;
+
+    function startmove(cup_index) {
       turn.cup = cup_index;
+      turn.seeds = context._get_seeds(turn);
+      context.players[turn.player].cups[turn.cup] = 0;
+      context.options.onpicked(turn, context.players);
       context.move(turn);
-    }, this.players);
+    }
+
+    player = this.players[turn.player];
+    player.move(startmove, player);
+    return this;
   };
 
   Board.prototype.move = function (startturn) {
     var context = this, timeout, endturn;
 
     endturn = startturn.clone();
-
-    endturn.seeds = this._get_seeds(endturn);
 
     function tick(recursive, timeout) {
       if (endturn.seeds === 0) {
@@ -161,12 +167,8 @@
     return this;
   };
 
-  Board.prototype._get_seeds = function (turn) {
-    return this.players[turn.player].cups[turn.cup];
-  };
-
   Board.prototype._tick = function (endturn, startturn) {
-    endturn.seeds -= 1;
+    endturn.cup += (endturn.player * 2) - 1;
 
     if (rules.pit(endturn)) {
       if (startturn.player === endturn.player) {
@@ -177,24 +179,60 @@
       endturn = endturn.next();
     } else {
       this.players[endturn.player].cups[endturn.cup] += 1;
-      this.options.onmove(endturn.clone(), this.players);
+      this.options.onmove(endturn, this.players);
     }
 
+    endturn.seeds -= 1;
     return endturn;
   };
 
-  Board.prototype._close = function () {
-    if (rules.extra(startturn, endturn, this.players)) {
+  Board.prototype._get_seeds = function (turn) {
+    return this.players[turn.player].cups[turn.cup];
+  };
 
-    } else if (rules.capture(startturn, endturn, this.players)) {
+  Board.prototype._get_winner = function () {
+    var scores = this.players.map(function (player) {
+      return player.pit;
+    });
 
+    if (scores[0] === scores[1]) {
+      return 2;
     }
 
-    if (rules.end(this.players)) {
-      this.options.onfinish(this.players);
+    return scores.indexOf(Math.max.apply(null, scores));
+  };
+
+  Board.prototype._make_capture = function (endturn, startturn) {
+    var idx = endturn.cup
+      , opp = this.players[(startturn.player + 1) % 2]
+      , cur = this.players[startturn.player]
+      , seeds = opp.cups[idx];
+
+    cur.pit += (seeds + 1);
+
+    opp.cups[idx] = 0;
+    cur.cups[idx] = 0;
+
+    return this.players;
+  };
+
+  Board.prototype._close = function (endturn, startturn) {
+    if (rules.capture(startturn, endturn, this.players)) {
+      this._make_capture(endturn, startturn);
+      this.options.oncapture(endturn, this.players);
+    }
+
+    if (rules.end(startturn, endturn, this.players)) {
+      this.options.onfinish(this._get_winner(), this.players);
     } else {
-      startturn = startturn.next();
-      this.options.onturn(startturn);
+
+      if (rules.extra(startturn, endturn)) {
+        this.options.onextra(startturn);
+      } else {
+        startturn = startturn.next();
+        this.options.onturn(startturn);
+      }
+
       this.next(startturn);
     }
   };
@@ -211,7 +249,8 @@
       "extra",
       "picked",
       "pit",
-      "move"
+      "move",
+      "turn"
     ];
 
     events.forEach(function (event) {

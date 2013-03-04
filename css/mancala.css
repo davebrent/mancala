@@ -76,8 +76,13 @@ h1 {
   margin-bottom: 0;
 }
 
-.player-2 .cup:hover {
+.player-2 .cup:hover, .active {
   color: #0e94ec;
   border-color: #0e94ec;
   cursor: pointer;
+}
+
+.score {
+  color: #ee4400;
+  border-color: #ee4400;
 }
